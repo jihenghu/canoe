@@ -196,13 +196,19 @@ void init_athena(py::module &parent) {
            })
 
       .def("construct_atmosphere",
-           [](MeshBlock &mesh_block, ParameterInput *pin, Real xNH3, Real T0) {
-             return construct_atmosphere(&mesh_block, pin, xNH3, T0);
+           [](MeshBlock &mesh_block, ParameterInput *pin, Real xNH3, Real T0, Real rh_max_nh3) {
+             return construct_atmosphere(&mesh_block, pin, xNH3, T0, rh_max_nh3);
            })
 
       .def(
           "get_rad",
           [](MeshBlock &mesh_block) { return mesh_block.pimpl->prad; },
+          py::return_value_policy::reference)
+      
+      .def("get_aircolumn",
+          [](MeshBlock &mesh_block, int k, int j, int il, int iu){
+            return AirParcelHelper::gather_from_primitive(&mesh_block, k, j, il, iu);
+          },
           py::return_value_policy::reference);
 
   // outputs

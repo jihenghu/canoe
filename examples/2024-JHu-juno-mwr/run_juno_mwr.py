@@ -12,8 +12,8 @@ from typing import Tuple
 from canoe.harp import radiation_band, radiation
 
 
-def set_atmos_run_RT(mb: MeshBlock, qNH3: float, T0: float):  # ppmv  # Kelvin
-    mb.construct_atmosphere(pin, qNH3, T0)
+def set_atmos_run_RT(mb: MeshBlock, qNH3: float, T0: float, rhmax: float):  # ppmv  # Kelvin
+    mb.construct_atmosphere(pin, qNH3, T0, rhmax)
     rad = mb.get_rad()
     rad.cal_radiance(mb, mb.k_st, mb.j_st)
 
@@ -53,34 +53,39 @@ if __name__ == "__main__":
     rad = mb.get_rad()
     rad.cal_radiance(mb, mb.k_st, mb.j_st)
 
-    nb = rad.get_num_bands()
-    tb = np.array([0.0] * 4 * nb)
+    # nb = rad.get_num_bands()
+    # tb = np.array([0.0] * 4 * nb)
 
-    for ib in range(nb):
-        band1 = rad.get_band(ib)
-        toa = rad.get_band(ib).get_toa()[0]
-        tb[ib * 4 : ib * 4 + 4] = toa
-    print(tb)
+    # for ib in range(nb):
+    #     band1 = rad.get_band(ib)
+    #     toa = rad.get_band(ib).get_toa()[0]
+    #     tb[ib * 4 : ib * 4 + 4] = toa
+    # print(tb)
 
     # print(len(mesh.meshblocks()))
     # for mb in mesh.meshblocks():
     #    print(mb.block_size.nx1)
 
-    tb = set_atmos_run_RT(mb, 320, 169)
-    print(tb)
+    tb = set_atmos_run_RT(mb, 320, 169, 0.8)
+    # print(tb)
 
-    exit()
-    adlnTdlnP = 0.2  ##k
-    pmin = 100.0e5
-    pmax = 800.0e5
-    mb.modify_dlnTdlnP(adlnTdlnP, pmin, pmax)
+    print(pin.get_string("job", "problem_id"))
 
-    adlnNH3dlnP = 0.25  ##ppmv  -100
-    pmin = 100.0e5
-    pmax = 800.0e5
-    # mb.modify_dlnNH3dlnP(adlnNH3dlnP, pmin, pmax)
-    xNH3 = 200
-    T0 = 190
+    out = Outputs(mesh, pin)
+    out.make_outputs(mesh, pin)
+
+    # exit()
+    # adlnTdlnP = 0.2  ##k
+    # pmin = 100.0e5
+    # pmax = 800.0e5
+    # mb.modify_dlnTdlnP(adlnTdlnP, pmin, pmax)
+
+    # adlnNH3dlnP = 0.25  ##ppmv  -100
+    # pmin = 100.0e5
+    # pmax = 800.0e5
+    # # mb.modify_dlnNH3dlnP(adlnNH3dlnP, pmin, pmax)
+    # xNH3 = 200
+    # T0 = 190
     # mb.construct_atmosphere(pin,xNH3,T0)
 
     # for k in range(mb.k_st, mb.k_ed + 1):

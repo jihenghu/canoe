@@ -15,6 +15,7 @@
 
 // snap
 #include <snap/thermodynamics/thermodynamics.hpp>
+#include <snap/thermodynamics/atm_thermodynamics.hpp>
 
 // canoe
 #include <air_parcel.hpp>
@@ -151,6 +152,12 @@ PYBIND11_MODULE(canoe, m) {
 
       .def("set_property", [](const AirParcel &var, size_t wid,
                               double value) { var.w[wid] = value; })
+
+      .def("get_rh", 
+           [](const AirParcel &var, size_t wid) {
+             double result=get_relative_humidity(var, wid);
+             return result;
+           })
 
       .def("hydro",
            [](const AirParcel &var) {
