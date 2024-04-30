@@ -195,6 +195,12 @@ void init_athena(py::module &parent) {
                                                  pmax);
            })
 
+      .def("modify_dlnNH3dlnP_rhmax",
+           [](MeshBlock &mesh_block, Real adlnNH3dlnP, Real pmin, Real pmax, Real rhmax) {
+             return modify_atmoshere_adlnNH3dlnP_RHmax(&mesh_block, adlnNH3dlnP, pmin,
+                                                 pmax, rhmax);
+           })
+
       .def("construct_atmosphere",
            [](MeshBlock &mesh_block, ParameterInput *pin, Real xNH3, Real T0, Real rh_max_nh3) {
              return construct_atmosphere(&mesh_block, pin, xNH3, T0, rh_max_nh3);

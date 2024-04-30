@@ -15,8 +15,8 @@ from scipy.stats import norm
 
 import h5py
 
-h5 = h5py.File("run_mcmc_RHmax_1000.h5", "r")
-chain = h5["mcmc"]["chain"][:]
+h5 = h5py.File("run_mcmc_adlnNH3_background.h5", "r")
+chain = h5["mcmc"]["chain"][:,:,:]
 h5.close()
 
 flattened_chain = chain.reshape(-1, 2)
@@ -25,25 +25,38 @@ flattened_chain = chain.reshape(-1, 2)
 # labels = ["qNH3 [ppmv]", "Temperature [K]", "RHmax"]
 
 # Create the corner plot
-fig, ax = plt.subplots(3, 1, figsize=(23, 10))
-for iw in range(8):
-    ax[0].plot(range(1000), chain[:, iw, 0])
+fig, ax = plt.subplots(5, 1, figsize=(30, 10))
+for iw in range(12):
+    ax[0].plot(range(1000), chain[:, iw, 0],label=iw)
 
 ax[0].set_ylabel("qNH3 [ppmv]")
 ax[0].set_xlim([0, 1000])
+ax[0].legend()
 
-for iw in range(8):
+for iw in range(12):
     ax[1].plot(range(1000), chain[:, iw, 1])
 ax[1].set_ylabel("Temperature [K]")
 ax[1].set_xlim([0, 1000])
 ax[1].set_xlabel("step")
 
-for iw in range(8):
+for iw in range(12):
     ax[2].plot(range(1000), chain[:, iw, 2])
 ax[2].set_ylabel("RH_max_NH3")
 ax[2].set_xlim([0, 1000])
 ax[2].set_xlabel("step")
 
+for iw in range(12):
+    ax[3].plot(range(1000), chain[:, iw, 3])
+ax[3].set_ylabel("a_dlnNH3/dlnP")
+ax[3].set_xlim([0, 1000])
+ax[3].set_xlabel("step")
+
+for iw in range(12):
+    ax[4].plot(range(1000), chain[:, iw, 4])
+ax[4].set_ylabel("a_Pmax")
+ax[4].set_xlim([0, 1000])
+ax[4].set_xlabel("step")
+
 plt.tight_layout()
 # Show the plot
-plt.savefig("emcee_inspect_step_1000.png")
+plt.savefig("run_mcmc_adlnNH3_background_step.png")

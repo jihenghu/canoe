@@ -60,7 +60,7 @@
 // set up an adiabatic atmosphere
 void construct_atmosphere(MeshBlock *pmb, ParameterInput *pin, Real NH3ppmv,
                           Real T0, Real rh_max_nh3) {
-  Application::Logger app("main");
+  Application::Logger app("pycanoe");
   // app->Log("ProblemGenerator: juno");
 
   app->Log("NH3.ppmv", NH3ppmv);
