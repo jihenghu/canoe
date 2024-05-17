@@ -47,10 +47,10 @@ def set_atmos_run_RT(qNH3: float,
                      pmax: float = 0.0
                      ):  
     ## construct atmos with a rh limit
-    mb.construct_atmosphere(pin, qNH3, T0, RHmax)
+    mb.construct_atmosphere(pin, qNH3, T0, RHmax, 0)
 
     ## modify the top humidity with a increment
-    mb.modify_dlnNH3dlnP_rhmax(adlnNH3dlnP, pmin, pmax, RHmax)
+    mb.modify_dlnNH3dlnP_rhmax(adlnNH3dlnP, pmin, pmax, RHmax, 0)
 
     ## do radiative transfer
     rad = mb.get_rad()
@@ -158,25 +158,13 @@ if __name__ == "__main__":
             f"/nfs/nuke/chengcli/JUNOMWR/zzhang/PJ{pj:02d}_Freq{ch}.h5", "r"
         )
         if ch == 0:
-            c0 = tb_file["ModelTypeupdate1_MultiPJ_Mode1/Iter1/c0"][
-                -1
-            ]  ## the north polar
-            c1 = tb_file["ModelTypeupdate1_MultiPJ_Mode1/Iter1/c1"][
-                -1
-            ]  ## the north polar
-            c2 = tb_file["ModelTypeupdate1_MultiPJ_Mode1/Iter1/c2"][
-                -1
-            ]  ## the north polar
+            c0 = tb_file["ModelTypeupdate1_MultiPJ_Mode1/Iter1/c0"][-1]
+            c1 = tb_file["ModelTypeupdate1_MultiPJ_Mode1/Iter1/c1"][-1]
+            c2 = tb_file["ModelTypeupdate1_MultiPJ_Mode1/Iter1/c2"][-1]
         else:
-            c0 = tb_file["ModelTypeupdate1_MultiPJ_Mode3/Iter2/c0"][
-                -1
-            ]  ## the north polar
-            c1 = tb_file["ModelTypeupdate1_MultiPJ_Mode3/Iter2/c1"][
-                -1
-            ]  ## the north polar
-            c2 = tb_file["ModelTypeupdate1_MultiPJ_Mode3/Iter2/c2"][
-                -1
-            ]  ## the north polar
+            c0 = tb_file["ModelTypeupdate1_MultiPJ_Mode3/Iter2/c0"][-1]
+            c1 = tb_file["ModelTypeupdate1_MultiPJ_Mode3/Iter2/c1"][-1]
+            c2 = tb_file["ModelTypeupdate1_MultiPJ_Mode3/Iter2/c2"][-1]
         tb_file.close()
 
         # Xr=1.0 ## \mu >0.6
@@ -285,15 +273,15 @@ if __name__ == "__main__":
         [980, 130.0, 0.3, -0.21, 4.0E5],
         [610, 112.0, 0.45, -0.15, 3.6E5],
         [405, 182.0, 0.58, -0.1, 2.5E5],
-        [385, 199.0, 0.85, 0.0, 3.0E5],
-        [590, 145.0, 0.95, 0.0, 5.0E5],
+        [385, 199.0, 0.85, 0.05, 3.0E5],
+        [590, 145.0, 0.95, 0.23, 5.0E5],
     ]
 
     # Run MCMC
-    n_steps = 2000
+    n_steps = 3000
 
     # backend
-    filename = f"run_mcmc_adlnNH3_background_2000.h5"
+    filename = f"run_mcmc_background_{n_steps}.h5"
     backend = emcee.backends.HDFBackend(filename)
     backend.reset(n_walkers, n_dimensions)
 

@@ -103,10 +103,11 @@ void modify_atmoshere_adlnNH3dlnP(MeshBlock *pmb, Real adlnNH3dlnP, Real pmin,
 
 // modify atmoshere with adlnNH3dlnP with a RH_max limit
 void modify_atmoshere_adlnNH3dlnP_RHmax(MeshBlock *pmb, Real adlnNH3dlnP, 
-                              Real pmin, Real pmax, Real rhmax) {
+                              Real pmin, Real pmax, Real rhmax, int Jindex) {
   int is = pmb->is, js = pmb->js, ks = pmb->ks;
   int ie = pmb->ie, je = pmb->je, ke = pmb->ke;
   ke = ks;
+  js = js+Jindex;
   je = js;
 
   Hydro *phydro = pmb->phydro;
@@ -115,10 +116,10 @@ void modify_atmoshere_adlnNH3dlnP_RHmax(MeshBlock *pmb, Real adlnNH3dlnP,
   Real H0 = pcoord->GetPressureScaleHeight();
   Real dlnp = pcoord->dx1f(is) / H0;
 
-  Application::Logger app("pycanoe");
-  app->Log("adlnNH3dlnP", adlnNH3dlnP);
-  app->Log("pmax", pmax);
-  app->Log("pmin", pmin);
+  // Application::Logger app("pycanoe");
+  // app->Log("adlnNH3dlnP", adlnNH3dlnP);
+  // app->Log("pmax", pmax);
+  // app->Log("pmin", pmin);
   // index
   auto pindex = IndexMap::GetInstance();
   int iNH3 = pindex->GetVaporId("NH3");

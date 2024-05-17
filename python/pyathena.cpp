@@ -42,6 +42,7 @@ void init_athena(py::module &parent) {
       .def("get_integer", &ParameterInput::GetInteger)
       .def("get_real", &ParameterInput::GetReal)
       .def("get_boolean", &ParameterInput::GetBoolean)
+      .def("set_boolean", &ParameterInput::SetBoolean)
       .def("get_string", &ParameterInput::GetString)
       .def("set_string", &ParameterInput::SetString)
       .def("does_parameter_exist", &ParameterInput::DoesParameterExist);
@@ -196,14 +197,16 @@ void init_athena(py::module &parent) {
            })
 
       .def("modify_dlnNH3dlnP_rhmax",
-           [](MeshBlock &mesh_block, Real adlnNH3dlnP, Real pmin, Real pmax, Real rhmax) {
+           [](MeshBlock &mesh_block, Real adlnNH3dlnP, Real pmin, Real pmax, 
+              Real rhmax, int Jindex) {
              return modify_atmoshere_adlnNH3dlnP_RHmax(&mesh_block, adlnNH3dlnP, pmin,
-                                                 pmax, rhmax);
+                                                 pmax, rhmax, Jindex);
            })
 
       .def("construct_atmosphere",
-           [](MeshBlock &mesh_block, ParameterInput *pin, Real xNH3, Real T0, Real rh_max_nh3) {
-             return construct_atmosphere(&mesh_block, pin, xNH3, T0, rh_max_nh3);
+           [](MeshBlock &mesh_block, ParameterInput *pin, Real xNH3, Real T0, 
+              Real rh_max_nh3, int Jindex) {
+             return construct_atmosphere(&mesh_block, pin, xNH3, T0, rh_max_nh3, Jindex);
            })
 
       .def(

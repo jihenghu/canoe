@@ -15,7 +15,7 @@ from scipy.stats import norm
 
 import h5py
 
-h5 = h5py.File("run_mcmc_adlnNH3_background.h5", "r")
+h5 = h5py.File("run_mcmc_cpcs_noch2_1000.h5", "r")
 chain = h5["mcmc"]["chain"][:,:,:]
 h5.close()
 
@@ -25,7 +25,7 @@ flattened_chain = chain.reshape(-1, 2)
 # labels = ["qNH3 [ppmv]", "Temperature [K]", "RHmax"]
 
 # Create the corner plot
-fig, ax = plt.subplots(5, 1, figsize=(30, 10))
+fig, ax = plt.subplots(5, 1, figsize=(10, 10))
 for iw in range(12):
     ax[0].plot(range(1000), chain[:, iw, 0],label=iw)
 
@@ -59,4 +59,4 @@ ax[4].set_xlabel("step")
 
 plt.tight_layout()
 # Show the plot
-plt.savefig("run_mcmc_adlnNH3_background_step.png")
+plt.savefig("run_mcmc_cpcs_noch2_step_1000.png")

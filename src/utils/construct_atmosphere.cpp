@@ -59,13 +59,9 @@
 
 // set up an adiabatic atmosphere
 void construct_atmosphere(MeshBlock *pmb, ParameterInput *pin, Real NH3ppmv,
-                          Real T0, Real rh_max_nh3) {
-  Application::Logger app("pycanoe");
+                          Real T0, Real rh_max_nh3, int Jindex) {
+  Application::Logger app("pycanoe_construct_atmosphere");
   // app->Log("ProblemGenerator: juno");
-
-  app->Log("NH3.ppmv", NH3ppmv);
-  app->Log("T0", T0);
-  app->Log("rh_max_nh3", rh_max_nh3);
 
   auto pmy_mesh = pmb->pmy_mesh;
   auto pthermo = Thermodynamics::GetInstance();
@@ -77,6 +73,7 @@ void construct_atmosphere(MeshBlock *pmb, ParameterInput *pin, Real NH3ppmv,
   int js = pmb->js, ks = pmb->ks;
   int je = pmb->je, ke = pmb->ke;
   ke = ks;
+  js = js+Jindex;
   je = js;
   // mesh limits
   Real x1min = pmy_mesh->mesh_size.x1min;
@@ -96,6 +93,13 @@ void construct_atmosphere(MeshBlock *pmb, ParameterInput *pin, Real NH3ppmv,
   auto pindex = IndexMap::GetInstance();
   int iH2O = pindex->GetVaporId("H2O");
   int iNH3 = pindex->GetVaporId("NH3");
+
+  if (pin->GetBoolean("job","verbose")) {
+    app->Log("NH3.ppmv", NH3ppmv);
+    app->Log("T0", T0);
+    app->Log("rh_max_nh3", rh_max_nh3);
+    app->Log("Jindex", Jindex);
+  };
 
   // app->Log("index of H2O", iH2O);
   // app->Log("index of NH3", iNH3);

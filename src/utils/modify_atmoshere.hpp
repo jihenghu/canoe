@@ -22,6 +22,6 @@ void modify_atmoshere_adlnNH3dlnP(MeshBlock *pmb, Real adlnNH3dlnP, Real pmin,
 
 // modify atmoshere with adlnNH3dlnP with a RH_max limit
 void modify_atmoshere_adlnNH3dlnP_RHmax(MeshBlock *pmb, Real adlnNH3dlnP, 
-                              Real pmin, Real pmax, Real rhmax);
+                              Real pmin, Real pmax, Real rhmax, int Jindex);
 
 #endif  // SRC_UTILS_MODIFY_ATMOSPHERE_HPP_

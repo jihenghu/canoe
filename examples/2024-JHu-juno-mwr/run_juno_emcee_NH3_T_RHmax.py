@@ -41,7 +41,7 @@ def run_RT_modify_atmos(
 
 def set_atmos_run_RT(qNH3: float, T0: float = 180.0, RHmax: float=1.0):  # ppmv  # Kelvin
 
-    mb.construct_atmosphere(pin, qNH3, T0, RHmax)
+    mb.construct_atmosphere(pin, qNH3, T0, RHmax, 0)
     rad = mb.get_rad()
     rad.cal_radiance(mb, mb.k_st, mb.j_st)
 
