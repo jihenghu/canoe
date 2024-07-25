@@ -2,15 +2,16 @@ import numpy as np
 import h5py
 import matplotlib.pyplot as plt
 
-h5=h5py.File('run_mcmc_cpcs_noch2_1000.h5', 'r')
+h5=h5py.File('run_juno_emcee_cpcs_parallel_5000.h5', 'r')
 chain = np.array(h5['mcmc']['chain'][:])
 h5.close()
 
-h5=h5py.File('TB_cpcs_noch2_1000.h5', 'r')
-tbs = np.array(h5['tb'][:,0,::4])
+h5=h5py.File('run_regenerate_Tb_profile_parallel_cpcs_TB_5000.h5', 'r')
+tbs = np.array(h5['tb'][:,0,:])
+# tbs = np.array(h5['tb'])
 h5.close()
 
-nstep=1000
+nstep=5000
 
 shape = tbs.shape
 print(shape)
@@ -50,7 +51,7 @@ print(residual_0.shape)
 fig, ax = plt.subplots(5, 1,figsize=(8, 8), dpi=300)
 for i in range(5):
     print(i)
-    ax[i].plot(residual_0[:,i],label=r"$0^o$")
+    ax[i].plot(residual_0[:,i],label=r"$0^o$", color="gray", linewidth=1, alpha=0.5)
     # ax[i].plot(residual_0[:,i*4+1],label=r"$15^o$")
     # ax[i].plot(residual_0[:,i*4+2],label=r"$30^o$")
     # ax[i].plot(residual_0[:,i*4+3],label=r"$45^o$")
@@ -60,9 +61,9 @@ for i in range(5):
     ax[i].grid()
     mean=np.mean(residual_0[200:nstep,i]-anomaly[i]) 
     max1=max(residual_0[:,i]-anomaly[i]) 
-    ax[i].text(600,anomaly[i]+0.5, f"MB {mean: 4.2f} K ({mean/anomaly[i]*100: 3.1f} %)", fontsize=10, ha='center', va='center', color='blue')
+    ax[i].text(2000,anomaly[i]+0.5, f"bias={mean: 4.2f} K", fontsize=10, ha='center', va='center', color='blue')
     ax[i].axhline(y=anomaly[i], color='r', linestyle='--')
-    ax[i].text(50,anomaly[i]+0.5, f"{anomaly[i]: 4.2f} K", fontsize=10, ha='center', va='center', color='red')
+    ax[i].text(200,anomaly[i]+0.5, f"{anomaly[i]: 4.2f} K", fontsize=10, ha='center', va='center', color='red')
     # ax[0].set_ylim([0,50])
     # ax[1].set_ylim([0,20])
     # ax[2].set_ylim([0,15])
