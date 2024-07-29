@@ -59,7 +59,7 @@
 
 // set up an adiabatic atmosphere
 void construct_atmosphere(MeshBlock *pmb, ParameterInput *pin, Real NH3ppmv,
-                          Real T0, Real rh_max_nh3, int Jindex) {
+                          Real T0, Real rh_max_nh3, int Jindex, std::string method="dry") {
   Application::Logger app("pycanoe_construct_atmosphere");
   // app->Log("ProblemGenerator: juno");
 
@@ -99,6 +99,7 @@ void construct_atmosphere(MeshBlock *pmb, ParameterInput *pin, Real NH3ppmv,
     app->Log("T0", T0);
     app->Log("rh_max_nh3", rh_max_nh3);
     app->Log("Jindex", Jindex);
+    app->Log("method", method);  
   };
 
   // app->Log("index of H2O", iH2O);
@@ -134,12 +135,12 @@ void construct_atmosphere(MeshBlock *pmb, ParameterInput *pin, Real NH3ppmv,
 
     // stop at just above P0
     for (int i = is; i <= ie; ++i) {
-      pthermo->Extrapolate(&air, -dlnp / 2., "dry");
+      pthermo->Extrapolate(&air, -dlnp / 2., method);
       if (air.w[IPR] < P0) break;
     }
 
     // extrapolate down to where air is
-    pthermo->Extrapolate(&air, log(P0 / air.w[IPR]), "dry");
+    pthermo->Extrapolate(&air, log(P0 / air.w[IPR]), method);
 
     // make up for the difference
     Ts += T0 - air.w[IDN];
@@ -171,14 +172,14 @@ void construct_atmosphere(MeshBlock *pmb, ParameterInput *pin, Real NH3ppmv,
 
         AirParcelHelper::distribute_to_primitive(pmb, ks, js, i, air);
 
-        pthermo->Extrapolate(&air, -dlnp, "dry");
+        pthermo->Extrapolate(&air, -dlnp, method);
 
         if (air.w[IDN] < Tmin) break;
       }
 
       // Replace adiabatic atmosphere with isothermal atmosphere if temperature
       // is too low
-      pthermo->Extrapolate(&air, dlnp, "dry");
+      pthermo->Extrapolate(&air, dlnp, method);
       for (; i <= ie; ++i) {
         pthermo->Extrapolate(&air, -dlnp, "isothermal");
         AirParcelHelper::distribute_to_primitive(pmb, ks, js, i, air);

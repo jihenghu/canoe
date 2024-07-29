@@ -10,6 +10,6 @@
 
 // set up an adiabatic atmosphere
 void construct_atmosphere(MeshBlock *pmb, ParameterInput *pin, Real xNH3,
-                          Real T0, Real rh_max_nh3, int Jindex);
+                          Real T0, Real rh_max_nh3, int Jindex, std::string method="dry");
 
 #endif  // SRC_UTILS_CONSTRUCT_ATMOSPHERE_HPP_

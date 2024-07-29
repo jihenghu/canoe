@@ -18,6 +18,9 @@
 #include <utils/construct_atmosphere.hpp>
 #include <utils/modify_atmoshere.hpp>
 
+// snap
+#include <snap/thermodynamics/thermodynamics.hpp>
+
 namespace py = pybind11;
 
 void init_athena(py::module &parent) {
@@ -203,17 +206,40 @@ void init_athena(py::module &parent) {
                                                  pmax, rhmax, Jindex);
            })
 
-      .def("construct_atmosphere",
-           [](MeshBlock &mesh_block, ParameterInput *pin, Real xNH3, Real T0, 
-              Real rh_max_nh3, int Jindex) {
-             return construct_atmosphere(&mesh_block, pin, xNH3, T0, rh_max_nh3, Jindex);
-           })
-
+      // .def("construct_atmosphere",
+      //      [](MeshBlock &mesh_block, ParameterInput *pin, Real xNH3, Real T0, 
+      //         Real rh_max_nh3, int Jindex, std::string method="dry") {
+      //        return construct_atmosphere(&mesh_block, pin, xNH3, T0, rh_max_nh3, Jindex);
+      //      })
+      .def("construct_atmosphere", 
+            [](MeshBlock &mesh_block, ParameterInput *pin, Real xNH3, Real T0, 
+              Real rh_max_nh3, int Jindex, std::string method = "dry") {
+                // Call the actual C++ function
+              return construct_atmosphere(&mesh_block, pin, xNH3, T0, rh_max_nh3, Jindex, method);
+            },
+            py::arg("pin"), py::arg("xNH3"), py::arg("T0"), 
+            py::arg("rh_max_nh3"), py::arg("Jindex"), 
+            py::arg("method") = "dry",
+            "Construct the atmosphere for the given MeshBlock with specified parameters.")
       .def(
           "get_rad",
           [](MeshBlock &mesh_block) { return mesh_block.pimpl->prad; },
           py::return_value_policy::reference)
-      
+
+      .def(
+          "get_temp",
+          [](MeshBlock &mesh_block, int k, int j, int i){ 
+            auto pthermo = Thermodynamics::GetInstance();
+            return pthermo->GetTemp(&mesh_block, k, j, i); },
+          py::return_value_policy::reference)
+
+      .def(
+          "get_theta",
+          [](MeshBlock &mesh_block, Real p0, int k, int j, int i){ 
+            auto pthermo = Thermodynamics::GetInstance();
+            return pthermo->PotentialTemp(&mesh_block, p0, k, j, i); },
+          py::return_value_policy::reference)
+
       .def("get_aircolumn",
           [](MeshBlock &mesh_block, int k, int j, int il, int iu){
             return AirParcelHelper::gather_from_primitive(&mesh_block, k, j, il, iu);
