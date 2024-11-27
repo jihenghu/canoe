@@ -21,7 +21,7 @@ from canoe.athena import Mesh, ParameterInput, Outputs, MeshBlock
 os.environ["OMP_NUM_THREADS"] = "1"
 local_storage = threading.local()
 
-def set_atmos_run_RT_concurrent(qNH3: float, 
+def set_atmos_run_RT_concurrent(qH2O: float, qNH3: float, 
                      T0: float = 180.0, 
                      RHmax: float=1.0,
                      adlnNH3dlnP: float=0.0,
@@ -31,10 +31,10 @@ def set_atmos_run_RT_concurrent(qNH3: float,
                      ):  
     ## construct atmos with a rh limit
     ## jindex is the index of current processer, starting from zero, will add to mb.jst in canoe backend 
-    mb.construct_atmosphere(pin, qNH3, T0, RHmax, jindex, "pseudo")
+    mb.construct_atmosphere(pin, qNH3, T0, RHmax, jindex, "pseudo", qH2O, 500)
 
     ## modify the top humidity with a increment
-    # mb.modify_dlnNH3dlnP_rhmax(adlnNH3dlnP, pmin, pmax, RHmax, jindex) 
+    # mb.modify_dlnNH3dlnP_rhmax(pin, adlnNH3dlnP, pmin, pmax, RHmax, jindex, "pseudo") 
 
     ## do radiative transfer
     # print(mb.j_st+jindex)
@@ -48,14 +48,15 @@ def set_atmos_run_RT_concurrent(qNH3: float,
 # Define likelihood function
 def ln_likelihood(theta):
     # nh3, temp, RHmax, adlnNH3, pmax = theta
-    nh3, temp, RHmax = theta
-
+    # h2o,nh3, temp, RHmax = theta
+    h2o, temp, RHmax = theta
+    nh3, adlnNH3, pmin,  pmax =381.6, 0, 0, 0
     # process_id = os.getpid()  # This gives the process ID
     thread_id = current_process().name.split('-')[1]  # This gives the name of the current process
     # print(f"Task is being executed by process ID: {process_id} and thread ID: {thread_id}")
     jindex=int(thread_id)-1 ## -1 is extremely important!! do not touch it if you are not sure
-    # simulations = set_atmos_run_RT_concurrent(nh3, temp, RHmax, adlnNH3,1.E-3, pmax, jindex)  # Use your forward operator here
-    simulations = set_atmos_run_RT_concurrent(nh3, temp, RHmax, 0.0, 0.0, 0.0, jindex)  # Use your forward operator here
+    # simulations = set_atmos_run_RT_concurrent(nh3, temp, RHmax, adlnNH3,1.E-3, pmax, jindex) 
+    simulations = set_atmos_run_RT_concurrent(h2o, nh3, temp, RHmax, adlnNH3, pmin, pmax, jindex)  
     residuals = observations - simulations
 
     chi_squared=0.0
@@ -67,12 +68,12 @@ def ln_likelihood(theta):
 
 # Define priors for NH3 and temperature
 def ln_prior(theta):
-    # nh3, temp, RHmax, adlnNH3, pmax = theta
-    nh3, temp, RHmax = theta
+    h2o, temp, RHmax = theta
+    # h2o, adlnNH3, pmax = theta
     # pmax=pmax*1.E5
 
-    nh3_mean = 300  # Mean value for NH3
-    nh3_stddev = 100  # Standard deviation for NH3
+    h2o_mean=2500
+    h2o_stddev=10000
 
     temp_mean = 169  # Mean value for temperature
     temp_stddev = 10  # Standard deviation for temperature   0.5%
@@ -80,20 +81,12 @@ def ln_prior(theta):
     RHmax_mean = 1.0 
     RHmax_stddev = 0.5    
 
-    # adlnNH3_mean=0.
-    # adlnNH3_stddev=0.8  ## dln100ppmv/ln1.E5
-
-    # pmax_mean=5.0E5   ## effective contributing layer of CH4 and CH5
-    # pmax_stddev=1.0E5
-
-    ln_prior_nh3 = -0.5 * ((nh3 - nh3_mean) / nh3_stddev)**2 - np.log(nh3_stddev * np.sqrt(2 * np.pi))
+    ln_prior_h2o = -0.5 * ((h2o - h2o_mean) / h2o_stddev)**2 - np.log(h2o_stddev * np.sqrt(2 * np.pi))
     ln_prior_temp = -0.5 * ((temp - temp_mean) / temp_stddev)** 2 - np.log(temp_stddev * np.sqrt(2 * np.pi))
     ln_prior_rhmax = -0.5 * ((RHmax - RHmax_mean) / RHmax_stddev)**2 - np.log(RHmax_stddev * np.sqrt(2 * np.pi)+ np.log(2))
-    # ln_prior_adlnNH3 = -0.5 * ((adlnNH3 - adlnNH3_mean) / adlnNH3_stddev)**2 - np.log(adlnNH3_stddev*np.sqrt(2 * np.pi)+ np.log(2))
-    # ln_prior_pmax = -0.5 * ((pmax - pmax_mean) / pmax_stddev)**2 - np.log(pmax_stddev*np.sqrt(2*np.pi)+np.log(2))
 
-    if (0 < nh3 < 1000) and (100 < temp < 200) and (0 <= RHmax <= 1): #  and (5.E4 <= pmax <= 1.E6):
-        return ln_prior_nh3 + ln_prior_temp+ln_prior_rhmax #+ln_prior_adlnNH3+ln_prior_pmax #
+    if (10 < h2o < 6000) and (140 < temp < 200) and (0 <= RHmax <= 1) : 
+        return ln_prior_temp+ln_prior_rhmax+ln_prior_h2o #
     return -np.inf  # return negative infinity if parameters are outside allowed range
 
 # Combine likelihood and prior to get posterior
@@ -105,7 +98,7 @@ def ln_posterior(theta):
 
 if __name__=="__main__":
 
-    nx2 = 12  ## shall not be less than N_walkers, can be a little greater for safty.
+    nx2 = 8  ## shall not be less than N_walkers, can be a little greater for safty.
 
     ## initialize Canoe
     global pin
@@ -172,8 +165,8 @@ if __name__=="__main__":
     # Set the diagonal values to 0.5 * 0.5
     np.fill_diagonal(noise_var, sigma**2)
 
-    ## calibration error 2%
-    caliberr=0.02 
+    ## calibration error 2% ->1%
+    caliberr=0.01 
     calib_var = np.full((nchannel, nchannel), caliberr**2)
     calib_var[0:4,4:]=0.0
     calib_var[4:,:4]=0.0
@@ -204,28 +197,30 @@ if __name__=="__main__":
 
     # Initialize walkers
     n_walkers = nx2
-    n_dimensions = 3  # nh3, temperature, rh_max_NH3, adlnnh3, pmax
+    n_dimensions = 3  # H2O，nh3, temperature, rh_max_NH3
 
+    temp_range = (150, 200)  # Temperature range
+    RHmax_range = (0.5, 1.0)     # RHmax range
+    h2o_range = (10, 6000)  # H2O range
+    # adlnNHx_range = (-0.8, 0.8)     
+    # pmax_range = (5.E4, 1.E6)   
+    # # Generate random initial guesses for all walkers
+
+    # Fill in the initial_guess array with random values within the specified ranges
+    # Generate random initial guesses
     initial_guesses = [
-        [730, 120.0, 0.5], #, 0.0, 5.0E5],
-        [150, 195.0, 0.6], #, -0.1, 2.0E5],
-        [500, 155.0, 0.7], #, -0.2, 3.0E5],
-        [250, 132.0, 0.8], #, -0.3, 2.0E5],
-        [320, 165.0, 0.9], #, -0.5, 2.5E5],
-        [100, 170.0, 0.99], #, 0.01, 3.2E5],
-        [820, 140.0, 0.72], #, -0.05, 5.0E5],
-        [980, 130.0, 0.3], #, -0.21, 4.0E5],
-        [610, 112.0, 0.45], #, -0.15, 3.6E5],
-        [405, 182.0, 0.58], #, -0.1, 2.5E5],
-        [385, 199.0, 0.85], #, 0.05, 3.0E5],
-        [590, 145.0, 0.95], #, 0.23, 5.0E5],
+    [   np.random.uniform(h2o_range[0], h2o_range[1]),
+        np.random.uniform(temp_range[0], temp_range[1]),
+        np.random.uniform(RHmax_range[0], RHmax_range[1]),
+    ]
+    for _ in range(n_walkers)
     ]
 
     # Run MCMC
-    n_steps = 5000
+    n_steps = 10000
 
     # backend
-    filename = f"run_juno_emcee_pseudo_bg_parallel_{n_steps}.h5"
+    filename = f"run_juno_emcee_pseudo_H2O_T_RHmax_parallel_step_{n_steps}.h5"
     backend = emcee.backends.HDFBackend(filename)
     backend.reset(n_walkers, n_dimensions)
 

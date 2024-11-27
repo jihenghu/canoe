@@ -421,7 +421,9 @@ void Thermodynamics::Extrapolate(AirParcel* qfrac, Real dzORdlnp,
 
   // RK4 integration
 #ifdef HYDROSTATIC
-  rk4_integrate_lnp(qfrac, dzORdlnp, method, userp);
+  // rk4_integrate_lnp(qfrac, dzORdlnp, method, userp);
+  // rk4_integrate_lnp_adaptive(qfrac, dzORdlnp, method, userp, 1.E-4);
+  rk1_integrate_lnp_adaptive(qfrac, dzORdlnp, method, userp, 1.E-4);
 #else
   rk4_integrate_z(qfrac, dzORdlnp, method, grav, userp);
 #endif

@@ -6,7 +6,7 @@
 
 // snap
 #include "thermodynamics.hpp"
-
+#include <application/exceptions.hpp>
 // Calculates phase equilibrium of
 // Vapor <=> Cloud
 //

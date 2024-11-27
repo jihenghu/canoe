@@ -177,6 +177,14 @@ PYBIND11_MODULE(canoe, m) {
              return result;
            })
 
+      .def("extrapolate", 
+           [](AirParcel &qfrac, Real dzORdlnp, std::string method, Real grav = 0., Real userp = 0.) {
+            auto pthermo = Thermodynamics::GetInstance();
+            return pthermo->Extrapolate(&qfrac, dzORdlnp, method, grav , userp );
+           },
+           py::arg("dzORdlnp"), py::arg("method"), py::arg("grav")=0., py::arg("userp")=0.,
+          "Extrapolate air parcel with given method")
+
       .def("to_mass_fraction", &AirParcel::ToMassFraction)
       .def("to_mass_concentration", &AirParcel::ToMassConcentration)
       .def("to_mole_fraction", &AirParcel::ToMoleFraction)

@@ -12,16 +12,12 @@
 int find_pressure_level_lesser_pybind(Real pres, AthenaArray<Real> const &w,
                                       int k, int j, int is, int ie);
 
-// modify atmoshere with adlnTdlnP
-void modify_atmoshere_adlnTdlnP(MeshBlock *pmb, Real adlnTdlnP, Real pmin,
-                                Real pmax);
-
-// modify atmoshere with adlnNH3dlnP
-void modify_atmoshere_adlnNH3dlnP(MeshBlock *pmb, Real adlnNH3dlnP, Real pmin,
-                                  Real pmax);
-
 // modify atmoshere with adlnNH3dlnP with a RH_max limit
-void modify_atmoshere_adlnNH3dlnP_RHmax(MeshBlock *pmb, Real adlnNH3dlnP, 
-                              Real pmin, Real pmax, Real rhmax, int Jindex);
+void modify_atmos_adlnNH3dlnP_RHmax(MeshBlock *pmb, ParameterInput *pin, Real adlnNH3dlnP, 
+                              Real pmin, Real pmax, Real rhmax, int Jindex, std::string method="dry");
+
+// modify atmoshere with adlnTdlnP
+void modify_atmos_adlnTdlnP(MeshBlock *pmb, ParameterInput *pin, Real adlnTdlnP, 
+                              Real pmin, Real pmax, int Jindex, std::string method="dry");
 
 #endif  // SRC_UTILS_MODIFY_ATMOSPHERE_HPP_

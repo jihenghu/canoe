@@ -51,7 +51,7 @@ Real cal_dlnT_dlnP(AirParcel const& qfrac, Real const* cp_ratio_mole,
                    Real const* latent) {
   // calculate gammad
   Real gammad = get_gammad(qfrac);
-
+  // std::cout<<gammad<<std::endl;
   Real q_gas = 1.;
   for (int n = 0; n < NCLOUD; ++n) q_gas -= qfrac.c[n];
 

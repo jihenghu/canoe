@@ -36,6 +36,15 @@ Real get_internal_energy_mole(AirParcel const &qfrac, Real const *cv_ratio_mole,
 void rk4_integrate_lnp(AirParcel *qfrac, Real dlnp, std::string method,
                        Real adlnTdlnP);
 
+void rk4_integrate_lnp_adaptive(AirParcel* air, Real dlnp, std::string method,
+                      Real adlnTdlnP, Real ftol);
+
+void rk1_integrate_lnp(AirParcel *qfrac, Real dlnp, std::string method,
+                       Real adlnTdlnP);
+
+void rk1_integrate_lnp_adaptive(AirParcel* air, Real dlnp, std::string method,
+                      Real adlnTdlnP, Real ftol);
+
 void rk4_integrate_z(AirParcel *qfrac, Real dlnp, std::string method, Real grav,
                      Real adlnTdlnP);
 

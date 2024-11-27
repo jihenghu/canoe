@@ -10,7 +10,7 @@ set(PGEN ${CMAKE_CURRENT_SOURCE_DIR}/juno_mwr
   CACHE INTERNAL "Path to the source file for problem generator")
 
 # 4. Copy input file to run directory
-file(GLOB inputs *.inp *.yaml *.py)
+file(GLOB inputs *.inp *.yaml *.py *.ipynb)
 foreach(input ${inputs})
   # softlink inp files
   execute_process(COMMAND ln -sf ${input} ${CMAKE_BINARY_DIR}/bin/${inp})

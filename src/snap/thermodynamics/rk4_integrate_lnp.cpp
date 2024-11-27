@@ -15,7 +15,7 @@ void rk4_integrate_lnp(AirParcel* air, Real dlnp, std::string method,
   Real pres = air->w[IPR];
   Real chi[4];
   Real latent[1 + NVAPOR];
-
+  // std::string ratestr;
   for (int rk = 0; rk < 4; ++rk) {
     pthermo->EquilibrateTP(air);
     if (method != "reversible") {
@@ -26,11 +26,13 @@ void rk4_integrate_lnp(AirParcel* air, Real dlnp, std::string method,
       // make a trial run to get latent heat
       air->w[i] += 1.E-6;
       auto rates = pthermo->TryEquilibriumTP_VaporCloud(*air, i);
+      // if (i==1)
+        // ratestr+=std::to_string(rates[0]*1.E7)+" ";
       latent[i] = pthermo->GetLatentHeatMole(i, rates, air->w[IDN]) /
                   (Constants::Rgas * air->w[IDN]);
       air->w[i] -= 1.E-6;
     }
-
+        
     // calculate tendency
     if (method == "reversible" || method == "pseudo") {
       chi[rk] = cal_dlnT_dlnP(*air, cp_ratio_mole, latent);
@@ -50,12 +52,103 @@ void rk4_integrate_lnp(AirParcel* air, Real dlnp, std::string method,
           temp *
           exp(1. / 6. * (chi[0] + 2. * chi[1] + 2. * chi[2] + chi[3]) * dlnp);
     }
+
     air->w[IPR] = pres * exp(dlnp);
   }
+
+  // std::cout<<ratestr<<std::endl;
+  // std::cout<<chi[0]<<", "<< chi[1]<<", "<< chi[2]<<", "<< chi[3] <<std::endl;
 
   // recondensation
   pthermo->EquilibrateTP(air);
   if (method != "reversible") {
     for (int j = 0; j < NCLOUD; ++j) air->c[j] = 0;
+  }
+}
+
+void rk1_integrate_lnp(AirParcel* air, Real dlnp, std::string method,
+                       Real adlnTdlnP) {
+  auto pthermo = Thermodynamics::GetInstance();
+  auto const& cp_ratio_mole = pthermo->GetCpRatioMole();
+
+  Real step = 1.;
+  Real temp = air->w[IDN];
+  Real pres = air->w[IPR];
+  Real chi;
+  Real latent[1 + NVAPOR];
+  // std::string ratestr;
+  pthermo->EquilibrateTP(air);
+  if (method != "reversible") {
+    for (int j = 0; j < NCLOUD; ++j) air->c[j] = 0;
+  }
+
+  for (int i = 1; i <= NVAPOR; ++i) {
+    // make a trial run to get latent heat
+    air->w[i] += 1.E-6;
+    auto rates = pthermo->TryEquilibriumTP_VaporCloud(*air, i);
+    latent[i] = pthermo->GetLatentHeatMole(i, rates, air->w[IDN]) /
+                (Constants::Rgas * air->w[IDN]);
+    air->w[i] -= 1.E-6;
+  }
+      
+  // calculate tendency
+  if (method == "reversible" || method == "pseudo") {
+    chi = cal_dlnT_dlnP(*air, cp_ratio_mole, latent);
+  } else if (method == "dry") {
+    for (int i = 1; i <= NVAPOR; ++i) latent[i] = 0;
+    chi = cal_dlnT_dlnP(*air, cp_ratio_mole, latent);
+  } else {  // isothermal
+    chi = 0.;
+  }
+  chi += adlnTdlnP;
+
+  // integrate over dlnp
+  air->w[IDN] = temp * exp(chi * dlnp * step);
+  air->w[IPR] = pres * exp(dlnp);
+
+  // recondensation
+  pthermo->EquilibrateTP(air);
+  if (method != "reversible") {
+    for (int j = 0; j < NCLOUD; ++j) air->c[j] = 0;
+  }
+}
+
+void rk4_integrate_lnp_adaptive(AirParcel* air, Real dlnp, std::string method, Real adlnTdlnP, Real ftol) {
+  AirParcel air1, air2;
+  air1=*air;
+  air2=*air;
+
+  // trail step
+  rk4_integrate_lnp(&air1, dlnp, method, adlnTdlnP);
+  
+  // refined step
+  rk4_integrate_lnp(&air2, dlnp / 2., method, adlnTdlnP);
+  rk4_integrate_lnp(&air2, dlnp / 2., method, adlnTdlnP);
+
+  if (fabs(air2.w[IDN] - air1.w[IDN]) > ftol) {
+    rk4_integrate_lnp_adaptive(air, dlnp/2., method, adlnTdlnP, ftol/2.);
+    rk4_integrate_lnp_adaptive(air, dlnp/2., method, adlnTdlnP, ftol/2.);
+  } else {
+    *air=air2;
+  }
+}
+
+void rk1_integrate_lnp_adaptive(AirParcel* air, Real dlnp, std::string method, Real adlnTdlnP, Real ftol) {
+  AirParcel air1, air2;
+  air1=*air;
+  air2=*air;
+
+  // trail step
+  rk1_integrate_lnp(&air1, dlnp, method, adlnTdlnP);
+  
+  // refined step
+  rk1_integrate_lnp(&air2, dlnp / 2., method, adlnTdlnP);
+  rk1_integrate_lnp(&air2, dlnp / 2., method, adlnTdlnP);
+
+  if (fabs(air2.w[IDN] - air1.w[IDN]) > ftol) {
+    rk1_integrate_lnp_adaptive(air, dlnp/2., method, adlnTdlnP, ftol/2.);
+    rk1_integrate_lnp_adaptive(air, dlnp/2., method, adlnTdlnP, ftol/2.);
+  } else {
+    *air=air2;
   }
 }

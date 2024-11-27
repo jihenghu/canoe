@@ -59,7 +59,7 @@
 
 // set up an adiabatic atmosphere
 void construct_atmosphere(MeshBlock *pmb, ParameterInput *pin, Real NH3ppmv,
-                          Real T0, Real rh_max_nh3, int Jindex, std::string method="dry") {
+                          Real T0, Real rh_max_nh3, int Jindex, std::string method="dry", Real H2Oppmv=2500, int max_iter=200) {
   Application::Logger app("pycanoe_construct_atmosphere");
   // app->Log("ProblemGenerator: juno");
 
@@ -96,26 +96,31 @@ void construct_atmosphere(MeshBlock *pmb, ParameterInput *pin, Real NH3ppmv,
 
   if (pin->GetBoolean("job","verbose")) {
     app->Log("NH3.ppmv", NH3ppmv);
+    app->Log("H2O.ppmv", H2Oppmv);
     app->Log("T0", T0);
     app->Log("rh_max_nh3", rh_max_nh3);
     app->Log("Jindex", Jindex);
     app->Log("method", method);  
+    app->Log("max_iteration", max_iter);  
   };
 
   // app->Log("index of H2O", iH2O);
   // app->Log("index of NH3", iNH3);
 
   // set up an adiabatic atmosphere
-  int max_iter = 200, iter = 0;
+  int iter = 0;
+  // int max_iter = 200, iter = 0;
   Real dlnp = pcoord->dx1f(is) / H0;
 
   AirParcel air(AirParcel::Type::MoleFrac);
+  AirParcel air_prev(AirParcel::Type::MoleFrac);; // record the stop level
 
   // estimate surface temperature and pressure
   Real Ps = P0 * exp(-x1min / H0);
   Real Ts = T0 * pow(Ps / P0, Rd / cp);
-  Real xH2O = pin->GetReal("problem", "qH2O.ppmv") / 1.E6;
-  //   Real xNH3 = pin->GetReal("problem", "qNH3.ppmv") / 1.E6;
+  // Real xH2O = pin->GetReal("problem", "qH2O.ppmv") / 1.E6;
+  Real xH2O = H2Oppmv / 1.E6;
+  // Real xNH3 = pin->GetReal("problem", "qNH3.ppmv") / 1.E6;
   Real xNH3 = NH3ppmv / 1.E6;
   // app->Log("xH2O", xH2O);
   // app->Log("xNH3", xNH3);
@@ -126,6 +131,8 @@ void construct_atmosphere(MeshBlock *pmb, ParameterInput *pin, Real NH3ppmv,
 
   // Real rh_max_nh3 = pin->GetOrAddReal("problem", "rh_max.NH3", 1.);
 
+  int il;
+  
   while (iter++ < max_iter) {
     // read in vapors
     air.w[iH2O] = xH2O;
@@ -134,22 +141,36 @@ void construct_atmosphere(MeshBlock *pmb, ParameterInput *pin, Real NH3ppmv,
     air.w[IDN] = Ts;
 
     // stop at just above P0
-    for (int i = is; i <= ie; ++i) {
-      pthermo->Extrapolate(&air, -dlnp / 2., method);
+    for (il = is; il <= ie*2; ++il) {
+      air_prev = air; //  store the state before lifted
+      pthermo->Extrapolate(&air, -dlnp / 2. , method);
       if (air.w[IPR] < P0) break;
     }
 
-    // extrapolate down to where air is
+    if (il >= ie*2) {
+      throw RuntimeError("ProblemGenerator", "maximum level reached before reaching P0");
+    }
+
+    air=air_prev; // restore the previous level
+
+    // extrapolate up to the reference pressure level
     pthermo->Extrapolate(&air, log(P0 / air.w[IPR]), method);
 
+    if (pin->GetBoolean("job","verbose")) { 
+        app->Log("--Iteration #", iter); 
+        app->Log("--Ts", Ts);
+        app->Log("--temp_diff", T0 - air.w[IDN]);
+        app->Log("--air.H2O", air.w[iH2O]);
+        app->Log("--air.w[IDN]", air.w[IDN]);
+        std::cout<<"     "<<std::endl;   
+    }     
+    // std::cout<<T0<<", "<<Ts<<", "<<air.w[IDN]<<std::endl;   
     // make up for the difference
+    // Ts += 2. / (1 + iter/25.) * (T0 - air.w[IDN]);
     Ts += T0 - air.w[IDN];
-    if (std::abs(T0 - air.w[IDN]) < 0.01) break;
-
-    // app->Log("Iteration #", iter);
-    // app->Log("T", air.w[IDN]);
+    if (std::abs(T0 - air.w[IDN]) < 0.05) break;
   }
-
+ 
   if (iter > max_iter) {
     throw RuntimeError("ProblemGenerator", "maximum iteration reached");
   }
@@ -243,4 +264,348 @@ void construct_atmosphere(MeshBlock *pmb, ParameterInput *pin, Real NH3ppmv,
   // conditions.
   phydro->hbvar.SwapHydroQuantity(phydro->w, HydroBoundaryQuantity::prim);
   pbval->ApplyPhysicalBoundaries(0., 0., pbval->bvars_main_int);
+};
+
+// set up an adiabatic atmosphere with given Ts
+void construct_atmosphere_Ts(MeshBlock *pmb, ParameterInput *pin, Real NH3ppmv,
+                          Real Ts, Real rh_max_nh3, int Jindex, std::string method="dry", Real H2Oppmv=2500) {
+  Application::Logger app("pycanoe_construct_atmosphere");
+  // app->Log("ProblemGenerator: juno");
+
+  auto pmy_mesh = pmb->pmy_mesh;
+  auto pthermo = Thermodynamics::GetInstance();
+  auto pcoord = pmb->pcoord;
+  auto pimpl = pmb->pimpl;
+
+  int is = pmb->is;
+  int ie = pmb->ie;
+  int js = pmb->js, ks = pmb->ks;
+  int je = pmb->je, ke = pmb->ke;
+  ke = ks;
+  js = js+Jindex;
+  je = js;
+  // mesh limits
+  Real x1min = pmy_mesh->mesh_size.x1min;
+  Real x1max = pmy_mesh->mesh_size.x1max;
+
+  Real H0 = pcoord->GetPressureScaleHeight();
+
+  Real P0 = pin->GetReal("mesh", "ReferencePressure");
+
+  Real Tmin = pin->GetReal("problem", "Tmin");
+  // thermodynamic constants
+  Real gamma = pin->GetReal("hydro", "gamma");
+  Real Rd = pthermo->GetRd();
+  Real cp = gamma / (gamma - 1.) * Rd;
+
+  // index
+  auto pindex = IndexMap::GetInstance();
+  int iH2O = pindex->GetVaporId("H2O");
+  int iNH3 = pindex->GetVaporId("NH3");
+
+  if (pin->GetBoolean("job","verbose")) {
+    app->Log("NH3.ppmv", NH3ppmv);
+    app->Log("H2O.ppmv", H2Oppmv);
+    app->Log("rh_max_nh3", rh_max_nh3);
+    app->Log("Jindex", Jindex);
+    app->Log("method", method);  
+    app->Log("Ts", Ts);  
+  };
+
+
+  Real dlnp = pcoord->dx1f(is) / H0;
+
+  AirParcel air(AirParcel::Type::MoleFrac);
+  AirParcel air_prev;
+
+  // estimate surface temperature and pressure
+  Real Ps = P0 * exp(-x1min / H0);
+  // Real Ts = T0 * pow(Ps / P0, Rd / cp);
+  // Real xH2O = pin->GetReal("problem", "qH2O.ppmv") / 1.E6;
+  Real xH2O = H2Oppmv / 1.E6;
+  //   Real xNH3 = pin->GetReal("problem", "qNH3.ppmv") / 1.E6;
+  Real xNH3 = NH3ppmv / 1.E6;
+  // Real rh_max_nh3 = pin->GetOrAddReal("problem", "rh_max.NH3", 1.);
+
+  // construct atmosphere from bottom up
+  air.ToMoleFraction();
+  for (int k = ks; k <= ke; ++k)
+    for (int j = js; j <= je; ++j) {
+      air.SetZero();
+      air.w[iH2O] = xH2O;
+      air.w[iNH3] = xNH3;
+      air.w[IPR] = Ps;
+      air.w[IDN] = Ts;
+
+      int i = is;
+      for (; i <= ie; ++i) {
+        // check relative humidity
+        Real rh = get_relative_humidity(air, iNH3);
+        air.w[iNH3] *= std::min(rh_max_nh3 / rh, 1.);
+
+        AirParcelHelper::distribute_to_primitive(pmb, ks, js, i, air);
+
+        pthermo->Extrapolate(&air, -dlnp, method);
+
+        if (air.w[IDN] < Tmin) break;
+      }
+
+      // Replace adiabatic atmosphere with isothermal atmosphere if temperature
+      // is too low
+      pthermo->Extrapolate(&air, dlnp, method);
+      for (; i <= ie; ++i) {
+        pthermo->Extrapolate(&air, -dlnp, "isothermal");
+        AirParcelHelper::distribute_to_primitive(pmb, ks, js, i, air);
+      }
+    }
+
+  // set tracers, electron and Na
+  int ielec = pindex->GetTracerId("e-");
+  int iNa = pindex->GetTracerId("Na");
+  auto ptracer = pimpl->ptracer;
+
+  Real xH2S = pin->GetReal("problem", "xH2S");
+
+  Real metallicity = pin->GetOrAddReal("problem", "metallicity", 0.);
+
+  Real xNa = pin->GetReal("problem", "xNa");
+  xNa *= pow(10., metallicity);
+
+  Real xKCl = pin->GetReal("problem", "xKCl");
+  xKCl *= pow(10., metallicity);
+
+  Real xHe = pin->GetReal("problem", "xHe");
+
+  Real xCH4 = pin->GetReal("problem", "xCH4");
+
+  auto phydro = pmb->phydro;
+
+  for (int k = ks; k <= ke; ++k)
+    for (int j = js; j <= je; ++j)
+      for (int i = is; i <= ie; ++i) {
+        Real temp = pthermo->GetTemp(pmb, k, j, i);
+        Real pH2S = xH2S * phydro->w(IPR, k, j, i);
+        Real pNa = xNa * phydro->w(IPR, k, j, i);
+        Real svp = sat_vapor_p_Na_H2S_Visscher(temp, pH2S);
+        pNa = std::min(svp, pNa);
+
+        ptracer->u(iNa, k, j, i) = pNa / (Constants::kBoltz * temp);
+        ptracer->u(ielec, k, j, i) = saha_ionization_electron_density(
+            temp, ptracer->u(iNa, k, j, i), 5.14);
+      }
+
+  auto peos = pmb->peos;
+  auto pfield = pmb->pfield;
+  auto pscalars = pmb->pscalars;
+  auto pbval = pmb->pbval;
+
+  // primitive to conserved conversion (hydro)
+  peos->PrimitiveToConserved(phydro->w, pfield->bcc, phydro->u, pcoord, is, ie,
+                             js, je, ks, ke);
+
+  // conserved to primitive conversion (tracer)
+  peos->PassiveScalarConservedToPrimitive(pscalars->s, phydro->u, pscalars->r,
+                                          pscalars->r, pcoord, is, ie, js, je,
+                                          ks, ke);
+
+  // Microwave radiative transfer needs temperatures at cell interfaces, which
+  // are interpolated from cell centered hydrodynamic variables. Normally, the
+  // boundary conditions are taken care of internally. But, since we call
+  // radiative tranfer directly in pgen, we would need to update the boundary
+  // conditions manually. The following lines of code updates the boundary
+  // conditions.
+  phydro->hbvar.SwapHydroQuantity(phydro->w, HydroBoundaryQuantity::prim);
+  pbval->ApplyPhysicalBoundaries(0., 0., pbval->bvars_main_int);
+};
+
+// set up an adiabatic atmosphere with given Ts
+Real derive_T1bar_given_Ts(MeshBlock *pmb, ParameterInput *pin, Real NH3ppmv,Real Ts, 
+                        std::string method="dry", Real H2Oppmv=2500) {
+
+  Application::Logger app("pycanoe_infer_T0");
+
+  auto pmy_mesh = pmb->pmy_mesh;
+  auto pthermo = Thermodynamics::GetInstance();
+  auto pcoord = pmb->pcoord;
+
+  // mesh limits
+  Real x1min = pmy_mesh->mesh_size.x1min;
+  Real x1max = pmy_mesh->mesh_size.x1max;
+
+  Real H0 = pcoord->GetPressureScaleHeight();
+
+  Real P0 = pin->GetReal("mesh", "ReferencePressure");
+
+  Real Tmin = pin->GetReal("problem", "Tmin");
+  // thermodynamic constants
+  Real gamma = pin->GetReal("hydro", "gamma");
+  Real Rd = pthermo->GetRd();
+  Real cp = gamma / (gamma - 1.) * Rd;
+
+  // index
+  auto pindex = IndexMap::GetInstance();
+  int iH2O = pindex->GetVaporId("H2O");
+  int iNH3 = pindex->GetVaporId("NH3");
+
+  if (pin->GetBoolean("job","verbose")) {
+    app->Log("NH3.ppmv", NH3ppmv);
+    app->Log("H2O.ppmv", H2Oppmv);
+    // app->Log("T0", T0);
+    app->Log("method", method);  
+    app->Log("Ts", Ts);  
+  };
+
+  int is = pmb->is;
+  int ie = pmb->ie;
+  Real dlnp = pcoord->dx1f(is) / H0;
+
+  AirParcel air(AirParcel::Type::MoleFrac);
+  AirParcel air_prev;
+
+  // estimate surface temperature and pressure
+  Real Ps = P0 * exp(-x1min / H0);
+  // Real Ts = T0 * pow(Ps / P0, Rd / cp);
+  // Real xH2O = pin->GetReal("problem", "qH2O.ppmv") / 1.E6;
+  Real xH2O = H2Oppmv / 1.E6;
+  //   Real xNH3 = pin->GetReal("problem", "qNH3.ppmv") / 1.E6;
+  Real xNH3 = NH3ppmv / 1.E6;
+
+  // construct atmosphere from bottom up
+  air.ToMoleFraction();
+  air.SetZero();
+  air.w[iH2O] = xH2O;
+  air.w[iNH3] = xNH3;
+  air.w[IPR] = Ps;
+  air.w[IDN] = Ts;
+
+  int i = is;
+  for (; i <= ie*2; ++i) {
+    air_prev=air;
+    pthermo->Extrapolate(&air, -dlnp/2, method);
+    if (air.w[IPR] < P0) break;
+  }
+
+  // extrapolate up to the reference pressure level
+  pthermo->Extrapolate(&air_prev, log(P0 / air_prev.w[IPR]), method);
+
+  return air_prev.w[IDN];
+};
+
+// set up an adiabatic atmosphere
+Real retrieve_Ts_given_T1bar(MeshBlock *pmb, ParameterInput *pin, Real NH3ppmv,
+                          Real T0, Real rh_max_nh3, int Jindex, std::string method="dry", Real H2Oppmv=2500, int max_iter=200) {
+  Application::Logger app("pycanoe_construct_atmosphere");
+  // app->Log("ProblemGenerator: juno");
+  
+  auto pmy_mesh = pmb->pmy_mesh;
+  auto pthermo = Thermodynamics::GetInstance();
+  auto pcoord = pmb->pcoord;
+  auto pimpl = pmb->pimpl;
+
+  int is = pmb->is;
+  int ie = pmb->ie;
+  int js = pmb->js, ks = pmb->ks;
+  int je = pmb->je, ke = pmb->ke;
+  ke = ks;
+  js = js+Jindex;
+  je = js;
+  // mesh limits
+  Real x1min = pmy_mesh->mesh_size.x1min;
+  Real x1max = pmy_mesh->mesh_size.x1max;
+
+  Real H0 = pcoord->GetPressureScaleHeight();
+
+  Real P0 = pin->GetReal("mesh", "ReferencePressure");
+
+  Real Tmin = pin->GetReal("problem", "Tmin");
+  // thermodynamic constants
+  Real gamma = pin->GetReal("hydro", "gamma");
+  Real Rd = pthermo->GetRd();
+  Real cp = gamma / (gamma - 1.) * Rd;
+
+  // index
+  auto pindex = IndexMap::GetInstance();
+  int iH2O = pindex->GetVaporId("H2O");
+  int iNH3 = pindex->GetVaporId("NH3");
+
+  if (pin->GetBoolean("job","verbose")) {
+    app->Log("NH3.ppmv", NH3ppmv);
+    app->Log("H2O.ppmv", H2Oppmv);
+    app->Log("T0", T0);
+    app->Log("rh_max_nh3", rh_max_nh3);
+    app->Log("Jindex", Jindex);
+    app->Log("method", method);  
+    app->Log("max_iteration", max_iter);  
+  };
+
+  // app->Log("index of H2O", iH2O);
+  // app->Log("index of NH3", iNH3);
+
+  // set up an adiabatic atmosphere
+  int iter = 0;
+  // int max_iter = 200, iter = 0;
+  Real dlnp = pcoord->dx1f(is) / H0;
+
+  AirParcel air(AirParcel::Type::MoleFrac);
+  AirParcel air_prev(AirParcel::Type::MoleFrac);; // record the stop level
+
+  // estimate surface temperature and pressure
+  Real Ps = P0 * exp(-x1min / H0);
+  Real Ts = T0 * pow(Ps / P0, Rd / cp);
+  // Real xH2O = pin->GetReal("problem", "qH2O.ppmv") / 1.E6;
+  Real xH2O = H2Oppmv / 1.E6;
+  // Real xNH3 = pin->GetReal("problem", "qNH3.ppmv") / 1.E6;
+  Real xNH3 = NH3ppmv / 1.E6;
+  // app->Log("xH2O", xH2O);
+  // app->Log("xNH3", xNH3);
+  // app->Log("x1min", x1min);
+  // app->Log("P0", P0);
+  // app->Log("Rd", Rd);
+  // app->Log("gamma", gamma);
+
+  // Real rh_max_nh3 = pin->GetOrAddReal("problem", "rh_max.NH3", 1.);
+
+  int il;
+  
+  while (iter++ < max_iter) {
+    // read in vapors
+    air.w[iH2O] = xH2O;
+    air.w[iNH3] = xNH3;
+    air.w[IPR] = Ps;
+    air.w[IDN] = Ts;
+
+    // stop at just above P0
+    for (il = is; il <= ie*2; ++il) {
+      air_prev = air; //  store the state before lifted
+      pthermo->Extrapolate(&air, -dlnp / 2. , method);
+      if (air.w[IPR] < P0) break;
+    }
+
+    if (il >= ie*2) {
+      throw RuntimeError("ProblemGenerator", "maximum level reached before reaching P0");
+    }
+
+    air=air_prev; // restore the previous level
+
+    // extrapolate up to the reference pressure level
+    pthermo->Extrapolate(&air, log(P0 / air.w[IPR]), method);
+
+    if (pin->GetBoolean("job","verbose")) { 
+        app->Log("--Iteration #", iter); 
+        app->Log("--Ts", Ts);
+        app->Log("--temp_diff", T0 - air.w[IDN]);
+        app->Log("--air.H2O", air.w[iH2O]);
+        app->Log("--air.w[IDN]", air.w[IDN]);
+        std::cout<<"     "<<std::endl;   
+    }     
+
+    Ts += T0 - air.w[IDN];
+    if (std::abs(T0 - air.w[IDN]) < 0.05) break;
+  }
+ 
+  if (iter > max_iter) {
+    throw RuntimeError("ProblemGenerator", "maximum iteration reached");
+  }
+
+  return Ts;
 };

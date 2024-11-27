@@ -187,40 +187,78 @@ void init_athena(py::module &parent) {
       //.def_readonly("inversion", [](MeshBlock const& pmb) {
       //  return pmb.pimpl->all_fits;
       //});
-      .def("modify_dlnTdlnP",
-           [](MeshBlock &mesh_block, Real adlnTdlnP, Real pmin, Real pmax) {
-             return modify_atmoshere_adlnTdlnP(&mesh_block, adlnTdlnP, pmin,
-                                               pmax);
-           })
-
-      .def("modify_dlnNH3dlnP",
-           [](MeshBlock &mesh_block, Real adlnNH3dlnP, Real pmin, Real pmax) {
-             return modify_atmoshere_adlnNH3dlnP(&mesh_block, adlnNH3dlnP, pmin,
-                                                 pmax);
-           })
 
       .def("modify_dlnNH3dlnP_rhmax",
-           [](MeshBlock &mesh_block, Real adlnNH3dlnP, Real pmin, Real pmax, 
-              Real rhmax, int Jindex) {
-             return modify_atmoshere_adlnNH3dlnP_RHmax(&mesh_block, adlnNH3dlnP, pmin,
-                                                 pmax, rhmax, Jindex);
-           })
+           [](MeshBlock &mesh_block, ParameterInput *pin, Real adlnNH3dlnP, Real pmin, Real pmax, 
+              Real rhmax, int Jindex, std::string method="dry") {
+             return modify_atmos_adlnNH3dlnP_RHmax(&mesh_block, pin, adlnNH3dlnP, pmin,
+                                                 pmax, rhmax, Jindex, method);
+           },
+            py::arg("pin"), py::arg("adlnNH3dlnP"), py::arg("pmin"), py::arg("pmax"), 
+            py::arg("rhmax"), py::arg("Jindex"), 
+            py::arg("method") = "dry",
+            "Modify atmosphere with adlnNH3dlnP and RH_NH3 limit.")
 
-      // .def("construct_atmosphere",
-      //      [](MeshBlock &mesh_block, ParameterInput *pin, Real xNH3, Real T0, 
-      //         Real rh_max_nh3, int Jindex, std::string method="dry") {
-      //        return construct_atmosphere(&mesh_block, pin, xNH3, T0, rh_max_nh3, Jindex);
-      //      })
+      .def("modify_dlnTdlnP",
+           [](MeshBlock &mesh_block,  ParameterInput *pin, Real adlnTdlnP, Real pmin, Real pmax, 
+              int Jindex, std::string method="dry") {
+             return modify_atmos_adlnTdlnP(&mesh_block, pin, adlnTdlnP, pmin,
+                                                 pmax, Jindex, method);
+           },
+            py::arg("pin"), py::arg("adlnTdlnP"), py::arg("pmin"), py::arg("pmax"), 
+            py::arg("Jindex"), 
+            py::arg("method") = "dry",
+            "Modify atmosphere with Temperature gradient adlnTdlnP.")
+
       .def("construct_atmosphere", 
             [](MeshBlock &mesh_block, ParameterInput *pin, Real xNH3, Real T0, 
-              Real rh_max_nh3, int Jindex, std::string method = "dry") {
+              Real rh_max_nh3, int Jindex, std::string method = "dry", Real H2Oppmv=2500, int max_iter=200) {
                 // Call the actual C++ function
-              return construct_atmosphere(&mesh_block, pin, xNH3, T0, rh_max_nh3, Jindex, method);
+              return construct_atmosphere(&mesh_block, pin, xNH3, T0, rh_max_nh3, Jindex, method, H2Oppmv, max_iter);
             },
             py::arg("pin"), py::arg("xNH3"), py::arg("T0"), 
             py::arg("rh_max_nh3"), py::arg("Jindex"), 
             py::arg("method") = "dry",
+            py::arg("H2Oppmv") = 2500,
+            py::arg("max_iter") = 200,
             "Construct the atmosphere for the given MeshBlock with specified parameters.")
+
+      .def("construct_atmosphere_Ts", 
+            [](MeshBlock &mesh_block, ParameterInput *pin, Real xNH3, Real Ts, 
+              Real rh_max_nh3, int Jindex, std::string method = "dry", Real H2Oppmv=2500) {
+                // Call the actual C++ function
+              return construct_atmosphere_Ts(&mesh_block, pin, xNH3, Ts, rh_max_nh3, Jindex, method, H2Oppmv);
+            },
+            py::arg("pin"), py::arg("xNH3"), py::arg("Ts"), 
+            py::arg("rh_max_nh3"), py::arg("Jindex"), 
+            py::arg("method") = "dry",
+            py::arg("H2Oppmv") = 2500,
+            "Construct the atmosphere for the given MeshBlock with specified parameters.")
+      
+      .def("derive_T1bar_given_Ts", 
+            [](MeshBlock &mesh_block, ParameterInput *pin, Real xNH3, Real Ts, 
+              std::string method = "dry", Real H2Oppmv=2500) {
+                // Call the actual C++ function
+              return derive_T1bar_given_Ts(&mesh_block, pin, xNH3, Ts, method, H2Oppmv);
+            },
+            py::arg("pin"),  py::arg("xNH3"), py::arg("Ts"), 
+            py::arg("method") = "dry", 
+            py::arg("H2Oppmv")=2500,
+            "Return Reference Temperature [1 Bar] for the given MeshBlock with specified parameters.")
+
+      .def("retrieve_Ts_given_T1bar", 
+            [](MeshBlock &mesh_block, ParameterInput *pin, Real xNH3, Real T0, 
+              Real rh_max_nh3, int Jindex, std::string method = "dry", Real H2Oppmv=2500, int max_iter=200) {
+                // Call the actual C++ function
+              return retrieve_Ts_given_T1bar(&mesh_block, pin, xNH3, T0, rh_max_nh3, Jindex, method, H2Oppmv, max_iter);
+            },
+            py::arg("pin"), py::arg("xNH3"), py::arg("T0"), 
+            py::arg("rh_max_nh3"), py::arg("Jindex"), 
+            py::arg("method") = "dry",
+            py::arg("H2Oppmv") = 2500,
+            py::arg("max_iter") = 200,
+            "Return bottom temperature Ts for given T1bar.")
+
       .def(
           "get_rad",
           [](MeshBlock &mesh_block) { return mesh_block.pimpl->prad; },

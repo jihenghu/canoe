@@ -31,13 +31,13 @@ def set_atmos_run_RT_concurrent(qNH3: float,
                      ):  
     ## construct atmos with a rh limit
     ## jindex is the index of current processer, starting from zero, will add to mb.jst in canoe backend 
-    mb.construct_atmosphere(pin, qNH3, T0, RHmax, jindex)
-
+    xH2O=2500.
+    max_inter=500
+    mb.construct_atmosphere(pin, qNH3, T0, RHmax, jindex, "dry", xH2O, max_inter)
     ## modify the top humidity with a increment
-    mb.modify_dlnNH3dlnP_rhmax(adlnNH3dlnP, pmin, pmax, RHmax, jindex) 
+    mb.modify_dlnNH3dlnP_rhmax(pin, adlnNH3dlnP, pmin, pmax, RHmax, jindex, "dry") 
 
     ## do radiative transfer
-    # print(mb.j_st+jindex)
     rad.cal_radiance(mb, mb.k_st, mb.j_st+jindex)
     tb = np.array([0.0] * 4 * nb)
     for ib in range(nb):
@@ -66,7 +66,6 @@ def ln_likelihood(theta):
 # Define priors for NH3 and temperature
 def ln_prior(theta):
     nh3, temp, RHmax, adlnNH3, pmax = theta
-    # pmax=pmax*1.E5
 
     nh3_mean = 300  # Mean value for NH3
     nh3_stddev = 100  # Standard deviation for NH3
@@ -78,7 +77,7 @@ def ln_prior(theta):
     RHmax_stddev = 0.5    
 
     adlnNH3_mean=0.
-    adlnNH3_stddev=0.8  ## dln100ppmv/ln1.E5
+    adlnNH3_stddev=0.8  
 
     pmax_mean=5.0E5   ## effective contributing layer of CH4 and CH5
     pmax_stddev=1.0E5
@@ -102,8 +101,6 @@ def ln_posterior(theta):
 
 if __name__=="__main__":
 
-    nx2 = 12  ## shall not be less than N_walkers, can be a little greater for safty.
-
     ## initialize Canoe
     global pin
     pin = ParameterInput()
@@ -121,6 +118,7 @@ if __name__=="__main__":
 
     pin.set_boolean("job","verbose", False)
 
+    nx2 = 12  ## shall not be less than N_walkers, can be a little greater for safty. should > 2 * n_variables
     print(pin.get_string("mesh","nx2"))
     pin.set_string("mesh","nx2", f"{nx2}")
 
@@ -160,17 +158,15 @@ if __name__=="__main__":
     observations = obs[4:]
     print(observations)   
 
-
     ## construct covariance matrix COV
-    ##  random gaussian noise std 0.5 K
-    sigma=0.5 #K
+    sigma=0.5 #K   random gaussian noise
     nchannel=20
     noise_var = np.zeros((nchannel, nchannel))
     # Set the diagonal values to 0.5 * 0.5
     np.fill_diagonal(noise_var, sigma**2)
 
-    ## calibration error 2%
-    caliberr=0.02 
+    ## calibration error 2%->1%
+    caliberr=0.01 
     calib_var = np.full((nchannel, nchannel), caliberr**2)
     calib_var[0:4,4:]=0.0
     calib_var[4:,:4]=0.0
@@ -196,37 +192,37 @@ if __name__=="__main__":
     COV=TT*calib_var+noise_var
     # print(COV)
 
-
     # proform MCMC 
-
     # Initialize walkers
     n_walkers = nx2
     n_dimensions = 5  # nh3, temperature, rh_max_NH3, adlnnh3, pmax
     # initial_guess = [200.0, 150.0, 0.5, 0.0, 5.0E5]  # Initial guess for NH3 and temperature
-    # initial_guesses = [
-    #     [initial_guess[i] + initial_guess[i] *0.3* np.random.randn() for i in range(n_dimensions)] for _ in range(n_walkers)
-    # ]
+    nh3_range= (0,1000)
+    temp_range = (100, 200)  
+    RHmax_range = (0, 1.0)    
+    adlnNHx_range = (-0.8, 0.8)     
+    pmax_range = (5.E4, 1.E6)   
 
+
+    # # Generate random initial guesses for all walkers
+
+    # Fill in the initial_guess array with random values within the specified ranges
+    # Generate random initial guesses
     initial_guesses = [
-        [730, 120.0, 0.5, 0.0, 5.0E5],
-        [150, 195.0, 0.6, -0.1, 2.0E5],
-        [500, 155.0, 0.7, -0.2, 3.0E5],
-        [250, 132.0, 0.8, -0.3, 2.0E5],
-        [320, 165.0, 0.9, -0.5, 2.5E5],
-        [100, 170.0, 0.99, 0.01, 3.2E5],
-        [820, 140.0, 0.72, -0.05, 5.0E5],
-        [980, 130.0, 0.3, -0.21, 4.0E5],
-        [610, 112.0, 0.45, -0.15, 3.6E5],
-        [405, 182.0, 0.58, -0.1, 2.5E5],
-        [385, 199.0, 0.85, 0.05, 3.0E5],
-        [590, 145.0, 0.95, 0.23, 5.0E5],
+    [   np.random.uniform(nh3_range[0], nh3_range[1]),
+        np.random.uniform(temp_range[0], temp_range[1]),
+        np.random.uniform(RHmax_range[0], RHmax_range[1]),
+        np.random.uniform(adlnNHx_range[0], adlnNHx_range[1]),
+        np.random.uniform(pmax_range[0], pmax_range[1]),
+    ]
+    for _ in range(n_walkers)
     ]
 
     # Run MCMC
-    n_steps = 5000
+    n_steps = 10000
 
     # backend
-    filename = f"run_juno_emcee_bg_parallel_{n_steps}.h5"
+    filename = f"run_juno_emcee_dry_NH3_T_RHmax_adlnNH3_parallel_{n_steps}.h5"
     backend = emcee.backends.HDFBackend(filename)
     backend.reset(n_walkers, n_dimensions)
 
@@ -235,5 +231,3 @@ if __name__=="__main__":
     with Pool(POOL_SIZE) as pool:
         sampler = emcee.EnsembleSampler(n_walkers, n_dimensions, ln_posterior, backend=backend,pool=pool)
         sampler.run_mcmc(initial_guesses, n_steps, progress=True)
-    # sampler = emcee.EnsembleSampler(n_walkers, n_dimensions, ln_posterior, backend=backend)
-    # sampler.run_mcmc(initial_guesses, n_steps, progress=True)
