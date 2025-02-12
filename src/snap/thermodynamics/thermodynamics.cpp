@@ -421,9 +421,14 @@ void Thermodynamics::Extrapolate(AirParcel* qfrac, Real dzORdlnp,
 
   // RK4 integration
 #ifdef HYDROSTATIC
-  // rk4_integrate_lnp(qfrac, dzORdlnp, method, userp);
-  // rk4_integrate_lnp_adaptive(qfrac, dzORdlnp, method, userp, 1.E-4);
-  rk1_integrate_lnp_adaptive(qfrac, dzORdlnp, method, userp, 1.E-4);
+  // fast but not stable for moist case; recommended for dry adiabate case
+  rk4_integrate_lnp(qfrac, dzORdlnp, method, userp);   // restore for individual cpc retrv-- Jiheng
+
+  // slow, unstable for moist adiabate; not recommended for any case.
+  // rk4_integrate_lnp_adaptive(qfrac, dzORdlnp, method, userp, 1.E-4); 
+
+  // fast and stable for moist adiabate; use this for moist adiabate case
+  // rk1_integrate_lnp_adaptive(qfrac, dzORdlnp, method, userp, 1.E-4); 
 #else
   rk4_integrate_z(qfrac, dzORdlnp, method, grav, userp);
 #endif
