@@ -1,4 +1,4 @@
-# A  python demo run JunoMWR forward RT using Canoe
+# A  python demo to run JunoMWR forward RT using Canoe
 
 ## Install and compile
 
@@ -24,7 +24,7 @@ local/build $ make -j8
 ## Demos
 There are three main demo files under `build/bin/`:
 ### `run_juno_forward_mwr.py`
-A simplest demo, run RT in Jovian Equtorial Zone
+A simplest demo, run RT in Jovian Equtorial Zone, with:
 - `moist adiabatic` model, with a fixed 1-bar temperature;
 - `constant NH3 abundace` which only constrained by the saturation;
 - parameters are taken from [Cheng (2020)](https://www.nature.com/articles/s41550-020-1009-3);
@@ -34,7 +34,7 @@ A simplest demo, run RT in Jovian Equtorial Zone
 	![radiance_dry.png](radiance_dry.png)
 
 #### outouts
-You can output the vars wanted usign H5PY, like:
+You can output the vars wanted using H5PY, like:
 ```python 
 # Save the results to an HDF5 file
 with h5py.File('juno_mwr_fwd_case-EZ-moist-profile.h5', 'w') as h5file:
@@ -60,7 +60,7 @@ A test comparing the dry vs. moist adiabatic modelings, with the same T1bar.
 
 ### `demo_juno_mwr_fwd_EZ_fix_Ts.ipynb`
 A test comparing the dry vs. moist adiabatic modelings, with the same bottom temperature.
-	![Dry vs. moist (Fixed bottom)](temp_profile_fixtts.png)
+	![Dry vs. moist (Fixed bottom)](temp_profile_fixts.png)
 		
 
 
