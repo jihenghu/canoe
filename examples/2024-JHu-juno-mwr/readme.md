@@ -94,13 +94,13 @@ pa, nh3_ppmv, h2o_ppmv, temp, elec = 7000E5, 400, 4000, 2000, 1E16
 # find the layer index for the given pressure
 ilayer = np.argmin(np.abs(pressure - pa))
 
-require_layer_properties(mb, ilayer)
+query_layer_properties(mb, ilayer)
 
 # overwrite the layer properties
 overwrite_layer_properties(mb, ilayer, temp, nh3_ppmv, h2o_ppmv, elec)
 
 # check the layer properties after modification
-require_layer_properties(mb, ilayer)
+query_layer_properties(mb, ilayer)
 ```
 
  will yields the following log in console:

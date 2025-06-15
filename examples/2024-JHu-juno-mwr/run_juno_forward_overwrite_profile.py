@@ -25,7 +25,7 @@ from canoe.harp import radiation_band, radiation
 '''
 
 
-def require_layer_properties(mb, ilayer):
+def query_layer_properties(mb, ilayer):
     """
     Check if the layer has the required properties.
     If not, raise an error.
@@ -175,16 +175,13 @@ for irec, rec in enumerate(zip(pas, xNH3, xH2O, temps, electron)):
     # find the layer index for the given pressure
     ilayer = np.argmin(np.abs(pressure - pa))
 
-    require_layer_properties(mb, ilayer)
+    query_layer_properties(mb, ilayer)
 
     # overwrite the layer properties
     overwrite_layer_properties(mb, ilayer, temp, nh3_ppmv, h2o_ppmv, elec)
 
     # check the layer properties after modification
-    require_layer_properties(mb, ilayer)
-
-
-
+    query_layer_properties(mb, ilayer)
 
 ## ===============================================================================================
 ##                              calculate the profile  
