@@ -152,12 +152,33 @@ PYBIND11_MODULE(canoe, m) {
 
       .def("set_property", [](const AirParcel &var, size_t wid,
                               double value) { var.w[wid] = value; })
+                              
+      // .def("set_tracer", [](const AirParcel &var, size_t xid,
+      //                         double value) { var.x[xid] = value; })
 
       .def("get_rh", 
            [](const AirParcel &var, size_t wid) {
              double result=get_relative_humidity(var, wid);
              return result;
            })
+
+      .def("get_temp", 
+           [](const AirParcel &var) {
+             return var.w[IDN];
+           })
+      
+      .def("get_pressure", 
+           [](const AirParcel &var) {
+             return var.w[IPR];
+           })
+
+      .def("set_temp", 
+           [](const AirParcel &var, double value) 
+                                  { var.w[IDN] = value; })
+                          
+      .def("set_pressure", 
+           [](const AirParcel &var, double value) 
+                                  { var.w[IPR] = value; })
 
       .def("hydro",
            [](const AirParcel &var) {

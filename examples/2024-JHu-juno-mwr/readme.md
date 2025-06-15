@@ -62,6 +62,72 @@ A test comparing the dry vs. moist adiabatic modelings, with the same T1bar.
 A test comparing the dry vs. moist adiabatic modelings, with the same bottom temperature.
 	![Dry vs. moist (Fixed bottom)](temp_profile_fixts.png)
 		
+## Use your own profiles
+
+`run_juno_forward_overwrite_profile.py` show a demo to modify properties at given layers before running RT. Properties include `xNH3`, `xH2O`, `Temperature`, `e-`.
+This is implemented via function:
+
+```python
+def overwrite_layer_properties(mb, ilayer, temp, nh3_ppmv, h2o_ppmv, electron):
+
+    aircolumn = mb.get_aircolumn(mb.k_st, mb.j_st + Jindex, mb.i_st, mb.i_ed)  
+    ap_mole = aircolumn[ilayer].to_mole_fraction()
+
+    # set temperature, NH3, H2O
+    ap_mole.set_temp(temp)
+    ap_mole.set_property(iNH3, nh3_ppmv/1E6)
+    ap_mole.set_property(iH2O, h2o_ppmv/1E6)
+
+    # put back to the air column
+    mb.distribute_to_primitive(mb.k_st, mb.j_st + Jindex, mb.i_st + ilayer, ap_mole)
+
+    # set electron
+    mb.set_tracer(ielec, mb.k_st, mb.j_st + Jindex, mb.i_st + ilayer, electron)  
+    # mb.set_tracer(iNa, mb.k_st, mb.j_st + Jindex, mb.i_st + ilayer, pNa)  
+
+```
+
+A test like,
+
+```python 
+pa, nh3_ppmv, h2o_ppmv, temp, elec = 7000E5, 400, 4000, 2000, 1E16
+# find the layer index for the given pressure
+ilayer = np.argmin(np.abs(pressure - pa))
+
+require_layer_properties(mb, ilayer)
+
+# overwrite the layer properties
+overwrite_layer_properties(mb, ilayer, temp, nh3_ppmv, h2o_ppmv, elec)
+
+# check the layer properties after modification
+require_layer_properties(mb, ilayer)
+```
+
+ will yields the following log in console:
+ 
+``` bash
+--------------------------  15-th Layer properties----------------------------
+  P =  6996.22 bar
+  T = 2171.79 K
+  Θ = 158.45 K
+  xNH3 = 351.00 ppmv
+  xH2O = 2500.00 ppmv
+  e- = 7.317530469073691e+17 m^-3
+  Na+ = 9.263011667119726e+20 m^-3
+--------------------------  15-th Layer properties----------------------------
+  P =  6996.22 bar
+  T = 2000.00 K
+  Θ = 146.01 K
+  xNH3 = 400.00 ppmv
+  xH2O = 4000.00 ppmv
+  e- = 1e+16 m^-3
+  Na+ = 9.263011667119726e+20 m^-3
+```
+
+
+
+
+
 
 
 

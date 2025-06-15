@@ -131,8 +131,8 @@ for i in range(nlyr):
     # H2O_ppmv[i] = ap_mole.hydro()[iH2O]*1E6  
 
     ## temp and theta should be calculated before applying NH3 gradient, or it will be wrong.
-    temp[i] = mb.get_temp(mb.k_st, mb.j_st + Jindex,i)    
-    theta[i] = mb.get_theta(P0, mb.k_st, mb.j_st + Jindex,i)
+    temp[i] = mb.get_temp(mb.k_st, mb.j_st + Jindex,mb.i_st + i)    
+    theta[i] = mb.get_theta(P0, mb.k_st, mb.j_st + Jindex,mb.i_st + i)
 
 # Save the results to an HDF5 file
 with h5py.File('juno_mwr_fwd_case-EZ-moist-profile.h5', 'w') as h5file:

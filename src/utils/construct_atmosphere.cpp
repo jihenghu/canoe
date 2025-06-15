@@ -240,6 +240,7 @@ void construct_atmosphere(MeshBlock *pmb, ParameterInput *pin, Real NH3ppmv,
         ptracer->u(iNa, k, j, i) = pNa / (Constants::kBoltz * temp);
         ptracer->u(ielec, k, j, i) = saha_ionization_electron_density(
             temp, ptracer->u(iNa, k, j, i), 5.14);
+        // std::cout<<ptracer->u(ielec, k, j, i)<<std::endl;
       }
 
   auto peos = pmb->peos;

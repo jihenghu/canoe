@@ -17,7 +17,8 @@
 // utils
 #include <utils/construct_atmosphere.hpp>
 #include <utils/modify_atmoshere.hpp>
-
+// tracer
+#include <tracer/tracer.hpp>
 // snap
 #include <snap/thermodynamics/thermodynamics.hpp>
 
@@ -272,6 +273,26 @@ void init_athena(py::module &parent) {
           py::return_value_policy::reference)
 
       .def(
+          "get_pressure",
+          [](MeshBlock &mesh_block, int k, int j, int i){ 
+            auto pthermo = Thermodynamics::GetInstance();
+            return pthermo->GetPres(&mesh_block, k, j, i); },
+          py::return_value_policy::reference)
+
+      .def(
+          "get_tracer",
+          [](MeshBlock &mesh_block, int itracer, int k, int j, int i){ 
+            auto ptracer = mesh_block.pimpl->ptracer;
+            return ptracer->u(itracer, k, j, i); },
+          py::return_value_policy::reference)
+
+      .def(
+          "set_tracer",
+          [](MeshBlock &mesh_block, int itracer, int k, int j, int i, double value){ 
+            auto ptracer = mesh_block.pimpl->ptracer;
+            ptracer->u(itracer, k, j, i)=value; })
+
+      .def(
           "get_theta",
           [](MeshBlock &mesh_block, Real p0, int k, int j, int i){ 
             auto pthermo = Thermodynamics::GetInstance();
@@ -281,6 +302,12 @@ void init_athena(py::module &parent) {
       .def("get_aircolumn",
           [](MeshBlock &mesh_block, int k, int j, int il, int iu){
             return AirParcelHelper::gather_from_primitive(&mesh_block, k, j, il, iu);
+          },
+          py::return_value_policy::reference)
+      
+      .def("distribute_to_primitive",
+          [](MeshBlock &mesh_block, int k, int j, int i, AirParcel &airparcel){
+            return AirParcelHelper::distribute_to_primitive(&mesh_block, k, j, i, airparcel);
           },
           py::return_value_policy::reference);
 
