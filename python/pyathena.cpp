@@ -286,11 +286,12 @@ void init_athena(py::module &parent) {
             return ptracer->u(itracer, k, j, i); },
           py::return_value_policy::reference)
 
-      .def(
-          "set_tracer",
-          [](MeshBlock &mesh_block, int itracer, int k, int j, int i, double value){ 
-            auto ptracer = mesh_block.pimpl->ptracer;
-            ptracer->u(itracer, k, j, i)=value; })
+      // .def(
+      //     "set_tracer",
+      //     [](MeshBlock &mesh_block, int itracer, int k, int j, int i, double value){ 
+      //       auto ptracer = mesh_block.pimpl->ptracer;
+      //       ptracer->u(itracer, k, j, i)=value; })
+      
       .def(
           "set_tracer_layer",
           [](MeshBlock &mesh_block, int itracer, int j, int i,  double value){ 
