@@ -14,12 +14,14 @@
 #include <athena/hydro/hydro.hpp>
 #include <athena/mesh/mesh.hpp>
 #include <athena/parameter_input.hpp>
-
+#include <athena/scalars/scalars.hpp>
 // canoe
 #include <air_parcel.hpp>
 #include <constants.hpp>
 #include <impl.hpp>
 #include <index_map.hpp>
+#include <tracer/tracer.hpp>
+
 
 // snap
 #include <snap/thermodynamics/thermodynamics.hpp>
@@ -128,4 +130,37 @@ void modify_atmos_adlnTdlnP(MeshBlock *pmb, ParameterInput *pin, Real adlnTdlnP,
         AirParcelHelper::distribute_to_primitive(pmb, k, j, i + 1, air);
       }
     }
+};
+
+// overwrite e- , Na
+void set_tracer_layer(MeshBlock *pmb, int tracer_id, int j, int i, double value) {
+  int is = pmb->is, js = pmb->js, ks = pmb->ks;
+  int ie = pmb->ie, je = pmb->je, ke = pmb->ke;
+  // ke = ks;
+  // js = js+Jindex;
+  // je = js;
+
+  auto pimpl = pmb->pimpl;
+  auto phydro = pmb->phydro;
+  auto ptracer = pimpl->ptracer;
+  auto pthermo = Thermodynamics::GetInstance();
+  auto pcoord = pmb->pcoord;
+
+  for (int k = ks; k <= ke; ++k) {
+        ptracer->u(tracer_id, k, j, i) = value;
+      }
+
+  auto peos = pmb->peos;
+  auto pfield = pmb->pfield;
+  auto pscalars = pmb->pscalars;
+  auto pbval = pmb->pbval;
+
+  // primitive to conserved conversion (hydro)
+  peos->PrimitiveToConserved(phydro->w, pfield->bcc, phydro->u, pcoord, is, ie,
+                             js, je, ks, ke);
+
+  // conserved to primitive conversion (tracer)
+  peos->PassiveScalarConservedToPrimitive(pscalars->s, phydro->u, pscalars->r,
+                                          pscalars->r, pcoord, is, ie, js, je,
+                                          ks, ke);
 };

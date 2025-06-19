@@ -61,8 +61,8 @@ def overwrite_layer_properties(mb, ilayer, temp, nh3_ppmv, h2o_ppmv, electron):
     mb.distribute_to_primitive(mb.k_st, mb.j_st + Jindex, mb.i_st + ilayer, ap_mole)
 
     # set electron
-    mb.set_tracer(ielec, mb.k_st, mb.j_st + Jindex, mb.i_st + ilayer, electron)  
-    # mb.set_tracer(iNa, mb.k_st, mb.j_st + Jindex, mb.i_st + ilayer, pNa)  
+    mb.set_tracer_layer(ielec, mb.k_st, mb.j_st + Jindex, mb.i_st + ilayer, electron)  
+    # mb.set_tracer_layer(iNa, mb.k_st, mb.j_st + Jindex, mb.i_st + ilayer, pNa)  
 
 
 ## ========================================================================

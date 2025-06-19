@@ -291,6 +291,12 @@ void init_athena(py::module &parent) {
           [](MeshBlock &mesh_block, int itracer, int k, int j, int i, double value){ 
             auto ptracer = mesh_block.pimpl->ptracer;
             ptracer->u(itracer, k, j, i)=value; })
+      .def(
+          "set_tracer_layer",
+          [](MeshBlock &mesh_block, int itracer, int j, int i,  double value){ 
+            return set_tracer_layer(&mesh_block, itracer, j, i, value); },
+          py::arg("itracer"), py::arg("j"), py::arg("i"),  py::arg("value"),
+          "Set tracer value for the given MeshBlock and Jindex.")
 
       .def(
           "get_theta",

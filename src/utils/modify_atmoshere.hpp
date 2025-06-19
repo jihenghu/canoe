@@ -20,4 +20,7 @@ void modify_atmos_adlnNH3dlnP_RHmax(MeshBlock *pmb, ParameterInput *pin, Real ad
 void modify_atmos_adlnTdlnP(MeshBlock *pmb, ParameterInput *pin, Real adlnTdlnP, 
                               Real pmin, Real pmax, int Jindex, std::string method="dry");
 
+// overwrite e- , Na
+void set_tracer_layer(MeshBlock *pmb, int tracer_id, int j, int i,  double value);
+
 #endif  // SRC_UTILS_MODIFY_ATMOSPHERE_HPP_
